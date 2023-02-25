@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { PostBusiness } from "../business/PostBusiness";
 import { PostDataBase } from "../database/PostDataBase";
-import { CreatePostDTO, DeletePostInputDTO, EditPostInputDTO, GetPostInputDTO, GetPostOutputDTO } from "../dto/userDTO";
+import { CreatePostDTO, DeletePostInputDTO, EditPostInputDTO, GetPostInputDTO, GetPostOutputDTO, LikeOrDislikeDTO } from "../dto/userDTO";
 import { BaseError } from "../errors/BaseErrors";
 import { Post } from "../models/Post";
 import { TPosts, TPostsLike } from "../models/types";
@@ -113,32 +113,30 @@ export class PostController {
         }
     }
 
-//     public updatePostId = async (req: Request, res: Response) => {
-//         try {
-//             const idParams = req.params.id 
+    public updatePostId = async (req: Request, res: Response) => {
+        try {
+            
 
-//             const input = {
-//                 id: req.body.id,
-//                 creator_id: req.body.creator_id,
-//                 content: req.body.content,
-//                 likes: req.body.likes,
-//                 dislikes: req.body.dislikes
-//             }
+            const input : LikeOrDislikeDTO = {
+                idLikeOrDislike: req.params.id,
+                token: req.headers.authorization,
+                like: req.body.like
+            }
 
           
-//             const output = await this.postBusiness.updatePostId(input)
+            await this.postBusiness.updatePostId(input)
     
-          
-//             res.status(200).send("Post atualizado com sucesso")
-//             }catch (error) {
-//             console.log(error)
+            res.status(200).end()
+            
+            }catch (error) {
+            console.log(error)
     
-//             if (error instanceof BaseError) {
-//                 res.status(error.statusCode)
-//                 .send(error.message)
-//             }else{
-//                 res.send("Erro inesperado")
-//             }
-//         }
-//     }
+            if (error instanceof BaseError) {
+                res.status(error.statusCode)
+                .send(error.message)
+            }else{
+                res.send("Erro inesperado")
+            }
+        }
+    }
 }

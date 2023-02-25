@@ -26,4 +26,4 @@ postRouter.put("/:id", postController.updatePost)
 
 postRouter.delete("/:id", postController.deletePost)
 
-// postRouter.put("/:id", postController.updatePostId)
+postRouter.put("/:id/like", postController.updatePostId)

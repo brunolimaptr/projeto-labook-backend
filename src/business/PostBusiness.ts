@@ -1,9 +1,10 @@
 import { PostDataBase } from "../database/PostDataBase";
 import { UserDataBase } from "../database/UserDataBase";
-import { CreatePostDTO, DeletePostInputDTO, EditPostInputDTO, GetPostInputDTO, GetPostOutputDTO } from "../dto/userDTO";
+import { CreatePostDTO, DeletePostInputDTO, EditPostInputDTO, GetPostInputDTO, GetPostOutputDTO, LikeOrDislikeDTO } from "../dto/userDTO";
 import { BadRequestError } from "../errors/BadRequestError";
+import { NotFoundError } from "../errors/NotFoundError";
 import { Post } from "../models/Post";
-import { TPosts, TPostsLike, GetPostDB } from "../models/types";
+import { TPosts,  LikeorDislikeDB } from "../models/types";
 import { User } from "../models/User";
 import { HashManager } from "../services/HashManager";
 import { IdGenerator } from "../services/idGenerator";
@@ -225,38 +226,93 @@ export class PostBusiness{
 
     }
 
-    // public updatePostId = async (input: any)=>{
-    //     const { likes, dislikes } = input
+    public updatePostId = async (input: LikeOrDislikeDTO):Promise<void>=>{
+        
+        const { idLikeOrDislike, token, like } = input
+
+        
+        if(token === undefined){
+            throw new BadRequestError("token ausente")
+        }
+
+        const payload = this.tokenManager.getPayload(token)
+
+        if(payload === null){
+            throw new BadRequestError("token inválido")
+        }
            
     
-    //     if (likes !== undefined) {
+        if (like !== undefined) {
 
-    //         if (typeof likes !== "number") {
-    //             throw new BadRequestError("'likes' deve ser number")
-    //         }
-    //     }
+            if (typeof like !== "boolean") {
+                throw new BadRequestError("'like' deve ser boolean")
+            }
+        }
         
+        const post = await this.postDataBase.findPostLikeOrDislike(idLikeOrDislike)
 
-        // if (dislikes !== undefined) {
+        if(!post){
+            throw new NotFoundError("id não encontrada")
+        }
 
-        //     if (typeof dislikes !== "number") {
-        //         throw new BadRequestErro("'dislikes' deve ser number")
-        //     }
-        // }
-        // const postDataBase = new PostDataBase()
+      
+        const creatorId = payload.id
+        const likeSQL = like ? 1 : 0
 
-        // const [post] = await postDataBase.findPostId()
+        const likeOrDislike : LikeorDislikeDB = {
+            user_id: creatorId,
+            post_id: post.id,
+            like: likeSQL
+        }
+
+        const postLikeDis = new Post(
+            post.id,
+            post.creator_id,
+            post.content,
+            post.likes,
+            post.dislikes,
+            post.created_at,
+            post.updated_at
+        ) 
+
+        const likeDislikeExist = await this.postDataBase.findLikeDislike(likeOrDislike)
+
+        if(likeDislikeExist === "já foi curtido"){
+            if(like) {
+                await this.postDataBase.removeLikeDislike(likeOrDislike)
+                postLikeDis.removeLike()
+            }else{
+                await this.postDataBase.updateLikeDislike(likeOrDislike)
+                postLikeDis.removeLike()
+                postLikeDis.addDislike()
+            }
+
+        }else if(likeDislikeExist === "já foi descurtido"){
+            if(like) {
+                await this.postDataBase.removeLikeDislike(likeOrDislike)
+                postLikeDis.removeDislike()
+                postLikeDis.addLike()
+            }else{
+                await this.postDataBase.updateLikeDislike(likeOrDislike)
+                postLikeDis.removeDislike()
+            }
+        }else{
+
+        await this.postDataBase.likeOrDislikePost(likeOrDislike)   
+
+        like ? postLikeDis.addLike() : postLikeDis.addDislike()
+        }
+        
+        const updatePosts  = {
+            id: postLikeDis.getId(),
+            creator_id:  postLikeDis.getCreatorId(),
+            likes:  postLikeDis.getLikes(),
+            content: postLikeDis.getContent(),
+            dislikes: postLikeDis.getDislikes(),
+            created_at: postLikeDis.getCreatedAt(),
+            updated_at: postLikeDis.getUpdateAt()
+        }
        
-
-        // if (post) {
-        //     const updatePost: TPostsLike = {
-        //         likes: isNaN(likes) ? post.likes : likes,
-        //         dislikes: isNaN(dislikes) ? post.dislikes : dislikes,
-        //     }
-
-    
-        // } else {
-        //     throw new BadRequestErro("'id' não encontrada")
-        // }
-    // }
-}
+        await this.postDataBase.findUpdatePost(updatePosts, idLikeOrDislike)
+    }
+    }
