@@ -45,4 +45,11 @@ export interface GetPostDB {
 }
 }
 
+export interface LikeorDislikeDB {
+    user_id: string,
+    post_id: string,
+    like: number
+}
+
+
 
